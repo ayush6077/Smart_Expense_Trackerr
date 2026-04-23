@@ -1,26 +1,26 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Loader2, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import api from "../lib/api";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import { CATEGORIES, CURRENCIES } from "../lib/currency";
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { CATEGORIES, CURRENCIES } from "@/lib/currency";
 
 export function AddExpenseDialog({ defaultCurrency, onAdded }) {
   const [open, setOpen] = useState(false);
@@ -49,19 +49,23 @@ export function AddExpenseDialog({ defaultCurrency, onAdded }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/expenses", {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Not signed in");
+      const { error } = await supabase.from("expenses").insert({
+        user_id: userData.user.id,
         amount: Number(amount),
         currency,
         category,
         description: description || null,
         expense_date: date,
       });
+      if (error) throw error;
       toast.success("Expense added!");
       onAdded();
       reset();
       setOpen(false);
     } catch (err) {
-      toast.error(err.response?.data?.msg || err.message || "Failed to add");
+      toast.error(err instanceof Error ? err.message : "Failed to add");
     } finally {
       setLoading(false);
     }
@@ -72,28 +76,34 @@ export function AddExpenseDialog({ defaultCurrency, onAdded }) {
     if (!nlText.trim()) return;
     setLoading(true);
     try {
-      const { data } = await api.post("/ai/insights", { 
-        mode: "categorize", text: nlText, currency: defaultCurrency 
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "smart-insights",
+        {
+          body: { mode: "categorize", text: nlText, currency: defaultCurrency },
+        },
+      );
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (!data || !data.amount || !data.category) {
-        throw new Error("Couldn't extract required info from sentence.");
-      }
-
-      await api.post("/expenses", {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Not signed in");
+      const { error: insErr } = await supabase.from("expenses").insert({
+        user_id: userData.user.id,
         amount: Number(data.amount),
         currency: data.currency || defaultCurrency,
         category: data.category,
-        description: data.description || nlText,
+        description: data.description,
         expense_date: new Date().toISOString().slice(0, 10),
       });
-
-      toast.success(`Added: ${data.description || nlText} (${data.category})`);
+      if (insErr) throw insErr;
+      toast.success(`Added: ${data.description} (${data.category})`);
       onAdded();
       reset();
       setOpen(false);
     } catch (err) {
-      toast.error(err.message || "Couldn't parse expense");
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't parse expense",
+      );
     } finally {
       setLoading(false);
     }
@@ -128,6 +138,7 @@ export function AddExpenseDialog({ defaultCurrency, onAdded }) {
                 placeholder="e.g. Lunch at Sushi Place 24$"
                 autoFocus
               />
+
               <p className="text-xs text-muted-foreground">
                 AI will detect amount, category, and currency automatically.
               </p>
@@ -136,7 +147,11 @@ export function AddExpenseDialog({ defaultCurrency, onAdded }) {
                 disabled={loading || !nlText.trim()}
                 className="bg-gradient-brand w-full text-white"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Smart add"}
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Smart add"
+                )}
               </Button>
             </form>
           </TabsContent>
@@ -159,7 +174,9 @@ export function AddExpenseDialog({ defaultCurrency, onAdded }) {
                 <div>
                   <Label>Currency</Label>
                   <Select value={currency} onValueChange={setCurrency}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {CURRENCIES.map((c) => (
                         <SelectItem key={c.code} value={c.code}>
@@ -173,10 +190,14 @@ export function AddExpenseDialog({ defaultCurrency, onAdded }) {
               <div>
                 <Label>Category</Label>
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -192,10 +213,23 @@ export function AddExpenseDialog({ defaultCurrency, onAdded }) {
               </div>
               <div>
                 <Label htmlFor="date">Date</Label>
-                <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
               </div>
-              <Button type="submit" disabled={loading} className="bg-gradient-brand w-full text-white">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add expense"}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-gradient-brand w-full text-white"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Add expense"
+                )}
               </Button>
             </form>
           </TabsContent>
