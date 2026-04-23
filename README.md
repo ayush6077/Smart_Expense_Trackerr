@@ -1,8 +1,12 @@
-# SmartCents 💸
+# SmartCents
+
+![Landing Page](docs/images/screenshot_3.png)
 
 SmartCents is a premium, AI-powered personal finance and expense tracking application built using the MERN stack (MongoDB, Express, React, Node.js). It empowers users to take control of their finances with multi-currency support, dynamic charts, and natural language AI insights.
 
-## Features ✨
+## Features
+
+![Features Overview](docs/images/screenshot_4.png)
 
 * **AI-Powered Insights:** Get plain-English analysis of your spending, anomaly alerts, and personalized saving tips powered by your choice of AI (OpenAI or Gemini).
 * **Multi-Currency Support:** Track expenses in USD, EUR, INR, JPY, and more, making it perfect for both local management and international travel.
@@ -10,14 +14,22 @@ SmartCents is a premium, AI-powered personal finance and expense tracking applic
 * **Modern Interface:** Experience a high-energy, vibrant UI featuring glassmorphism design, smooth micro-animations, and responsive layouts.
 * **Smart Budgeting:** Set a monthly budget and let SmartCents tell you exactly how much you can spend per day to stay on track.
 
-## Tech Stack 🛠️
+## App Interface
+
+![Dashboard Top](docs/images/screenshot_1.png)
+
+![Dashboard Charts](docs/images/screenshot_5.png)
+
+![AI Insights & Trends](docs/images/screenshot_2.png)
+
+## Tech Stack
 
 * **Frontend:** React, Vite, Tailwind CSS, Shadcn UI
 * **Backend:** Node.js, Express.js
 * **Database:** MongoDB
 * **AI Integrations:** Google Gemini / OpenAI (configurable)
 
-## Getting Started 🚀
+## Getting Started
 
 ### Prerequisites
 
@@ -69,6 +81,6 @@ SmartCents is a premium, AI-powered personal finance and expense tracking applic
 
 4. Open your browser and navigate to the localhost port provided by Vite!
 
-## License 📜
+## License
 
 This project is licensed under the MIT License.
